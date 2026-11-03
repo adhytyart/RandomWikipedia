@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RandomWikipedia</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.5);
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between transition-colors duration-300">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Main Container -->
+    <div class="container mx-auto px-4 py-8 max-w-4xl flex-grow">
+        
+        <!-- Header & Branding -->
+        <header class="flex justify-between items-center mb-8 border-b border-slate-800 pb-6">
+            <div class="flex items-center gap-3">
+                <div class="p-3 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl shadow-lg shadow-blue-500/20">
+                    <i class="fa-solid fa-shuffle text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-300">
+                        RandomWikipedia
+                    </h1>
+                    <p class="text-xs text-slate-400">Click any topic, word, or sentence to copy</p>
+                </div>
+            </div>
+
+            <button id="theme-toggle" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/50 transition">
+                <i class="fa-solid fa-sun text-yellow-400 hidden dark:inline"></i>
+                <i class="fa-solid fa-moon text-slate-700 inline dark:hidden"></i>
+            </button>
+        </header>
+
+        <!-- Primary Action Button -->
+        <section class="text-center mb-10">
+            <button id="btn-give-random" class="group relative inline-flex items-center gap-3 px-8 py-4 text-lg font-bold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl shadow-xl shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-105 active:scale-95 transition-all duration-200">
+                <i class="fa-solid fa-dice text-2xl group-hover:rotate-180 transition-transform duration-500"></i>
+                <span>Give Random</span>
+            </button>
+        </section>
+
+        <!-- Content Area -->
+        <main id="content-container" class="space-y-8">
+            
+            <!-- Welcome / Initial State -->
+            <div id="welcome-state" class="text-center py-16 px-6 bg-slate-800/40 rounded-3xl border border-slate-800">
+                <i class="fa-solid fa-compass text-5xl text-blue-500/50 mb-4 animate-bounce"></i>
+                <h2 class="text-xl font-semibold text-slate-300 mb-2">Ready to explore?</h2>
+                <p class="text-slate-400 max-w-md mx-auto text-sm">
+                    Click <strong>"Give Random"</strong> to load a random Wikipedia topic along with words and sentences.
+                </p>
+            </div>
+
+            <!-- Loading Spinner State -->
+            <div id="loading-state" class="hidden py-16 text-center bg-slate-800/30 rounded-3xl border border-slate-800">
+                <div class="inline-block p-4 bg-blue-500/10 rounded-full mb-3">
+                    <i class="fa-solid fa-circle-notch fa-spin text-3xl text-blue-400"></i>
+                </div>
+                <p class="text-slate-300 font-medium">Fetching random Wikipedia page...</p>
+            </div>
+
+            <!-- Main Results Display -->
+            <div id="results-state" class="hidden space-y-8">
+                
+                <!-- Topic Card -->
+                <section class="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 border border-slate-700/60 shadow-xl relative">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
+                            Random Topic
+                        </span>
+                        <a id="wiki-link" href="#" target="_blank" rel="noopener noreferrer" class="text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1 transition">
+                            Open in Wikipedia <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        </a>
+                    </div>
+
+                    <!-- Topic Title (Invisible button to copy) -->
+                    <div id="topic-title-card" class="cursor-pointer group p-3 -mx-3 rounded-xl hover:bg-slate-700/50 transition flex items-center justify-between">
+                        <h2 id="topic-title" class="text-2xl font-bold text-white group-hover:text-blue-300 transition">
+                            <!-- Topic Title -->
+                        </h2>
+                        <span class="text-xs text-slate-400 group-hover:text-blue-400 flex items-center gap-1 ml-2 shrink-0">
+                            <i class="fa-regular fa-copy"></i> Copy Topic
+                        </span>
+                    </div>
+                </section>
+
+                <!-- 20 Random Words Section -->
+                <section class="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 border border-slate-700/60 shadow-xl">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-font text-blue-400"></i> Random Words
+                            </h3>
+                            <p class="text-xs text-slate-400">Click any word to copy</p>
+                        </div>
+                        <button id="btn-another-word" class="px-4 py-2 text-xs font-medium bg-blue-600/20 text-blue-300 hover:bg-blue-600/30 border border-blue-500/30 rounded-xl transition flex items-center gap-1.5 active:scale-95">
+                            <i class="fa-solid fa-plus"></i> Give Another Random Word
+                        </button>
+                    </div>
+
+                    <!-- Word Chips -->
+                    <div id="words-chips-container" class="flex flex-wrap gap-2.5 min-h-[60px]">
+                        <!-- Word chips inserted dynamically -->
+                    </div>
+                </section>
+
+                <!-- 10 Sentences Section -->
+                <section class="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 border border-slate-700/60 shadow-xl">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-quote-left text-indigo-400"></i> 10 Random Sentences
+                            </h3>
+                            <p class="text-xs text-slate-400">Click any line to copy</p>
+                        </div>
+                        <button id="btn-another-lines" class="px-4 py-2 text-xs font-medium bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/30 border border-indigo-500/30 rounded-xl transition flex items-center gap-1.5 active:scale-95">
+                            <i class="fa-solid fa-arrows-rotate"></i> Give Another 10 Random Lines
+                        </button>
+                    </div>
+
+                    <!-- Sentences Container -->
+                    <div id="sentences-container" class="space-y-2.5">
+                        <!-- Sentences inserted dynamically -->
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-12 border-t border-slate-800 bg-slate-950/80 py-6 text-center text-xs text-slate-500">
+        <p>© RandomWikipedia | Created by <span class="font-semibold text-slate-300">Adimon</span></p>
+    </footer>
+
+    <script>
+        // Common English Stopwords to filter clean words
+        const STOP_WORDS = new Set([
+            'a', 'about', 'above', 'after', 'again', 'against', 'all', 'am', 'an', 'and', 'any', 'are', 'aren\'t', 'as', 'at', 
+            'be', 'because', 'been', 'before', 'being', 'below', 'between', 'both', 'but', 'by', 'can\'t', 'cannot', 'could', 
+            'couldn\'t', 'did', 'didn\'t', 'do', 'does', 'doesn\'t', 'doing', 'don\'t', 'down', 'during', 'each', 'few', 'for', 
+            'from', 'further', 'had', 'hadn\'t', 'has', 'hasn\'t', 'have', 'haven\'t', 'having', 'he', 'he\'d', 'he\'ll', 'he\'s', 
+            'her', 'here', 'here\'s', 'hers', 'herself', 'him', 'himself', 'his', 'how', 'how\'s', 'i', 'i\'d', 'i\'ll', 'i\'m', 
+            'i\'ve', 'if', 'in', 'into', 'is', 'isn\'t', 'it', 'it\'s', 'its', 'itself', 'let\'s', 'me', 'more', 'most', 'mustn\'t', 
+            'my', 'myself', 'no', 'nor', 'not', 'of', 'off', 'on', 'once', 'only', 'or', 'other', 'ought', 'our', 'ours', 
+            'ourselves', 'out', 'over', 'own', 'same', 'shan\'t', 'she', 'she\'d', 'she\'ll', 'she\'s', 'should', 'shouldn\'t', 
+            'so', 'some', 'such', 'than', 'that', 'that\'s', 'the', 'their', 'theirs', 'them', 'themselves', 'then', 'there', 
+            'there\'s', 'these', 'they', 'they\'d', 'they\'ll', 'they\'re', 'they\'ve', 'this', 'those', 'through', 'to', 'too', 
+            'under', 'until', 'up', 'very', 'was', 'wasn\'t', 'we', 'we\'d', 'we\'ll', 'we\'re', 'we\'ve', 'were', 'weren\'t', 
+            'what', 'what\'s', 'when', 'when\'s', 'where', 'where\'s', 'which', 'while', 'who', 'who\'s', 'whom', 'why', 
+            'why\'s', 'with', 'won\'t', 'would', 'wouldn\'t', 'you', 'you\'d', 'you\'ll', 'you\'re', 'you\'ve', 'your', 'yours', 
+            'yourself', 'yourselves', 'also', 'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 
+            'september', 'october', 'november', 'december', 'years', 'first', 'second', 'new', 'one', 'two', 'three', 'refer', 'external', 'links'
+        ]);
+
+        // State Store
+        let currentArticle = {
+            title: '',
+            url: '',
+            allWords: [],
+            displayedWords: [],
+            allSentences: [],
+            displayedSentences: []
+        };
+
+        // DOM Elements
+        const btnGiveRandom = document.getElementById('btn-give-random');
+        const btnAnotherWord = document.getElementById('btn-another-word');
+        const btnAnotherLines = document.getElementById('btn-another-lines');
+        
+        const welcomeState = document.getElementById('welcome-state');
+        const loadingState = document.getElementById('loading-state');
+        const resultsState = document.getElementById('results-state');
+
+        const topicTitleCard = document.getElementById('topic-title-card');
+        const topicTitle = document.getElementById('topic-title');
+        const wikiLink = document.getElementById('wiki-link');
+
+        const wordsChipsContainer = document.getElementById('words-chips-container');
+        const sentencesContainer = document.getElementById('sentences-container');
+        const themeToggle = document.getElementById('theme-toggle');
+
+        // Dark/Light Theme Toggle
+        themeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            if (document.documentElement.classList.contains('dark')) {
+                document.body.classList.replace('bg-slate-100', 'bg-slate-900');
+                document.body.classList.replace('text-slate-800', 'text-slate-100');
+            } else {
+                document.body.classList.replace('bg-slate-900', 'bg-slate-100');
+                document.body.classList.replace('text-slate-100', 'text-slate-800');
+            }
+        });
+
+        // Copy Helper & Toast
+        function copyToClipboard(text, label = 'Text') {
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = text;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+
+            showToast(`Copied ${label}: "${text.length > 30 ? text.substring(0, 30) + '...' : text}"`);
+        }
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'bg-slate-800/90 border border-blue-500/50 text-white text-xs px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 transform translate-y-2 opacity-0 transition-all duration-300 pointer-events-auto backdrop-blur-md';
+            toast.innerHTML = `<i class="fa-solid fa-check-circle text-blue-400"></i> <span>${message}</span>`;
+            
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        // Fetch Random Wikipedia Topic using MediaWiki API (Full Extract)
+        async function fetchRandomTopic() {
+            welcomeState.classList.add('hidden');
+            resultsState.classList.add('hidden');
+            loadingState.classList.remove('hidden');
+
+            try {
+                // MediaWiki API call to fetch full plain text extract of a random page
+                const apiUrl = 'https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=random&grnnamespace=0&prop=extracts&explaintext=1&exlimit=1';
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error('Failed to fetch Wikipedia data');
+                
+                const data = await response.json();
+                const pages = data.query?.pages;
+                if (!pages) throw new Error('No page data found');
+
+                const pageId = Object.keys(pages)[0];
+                const page = pages[pageId];
+
+                // Re-fetch if extract is too short for sentence extraction
+                if (!page.extract || page.extract.length < 300) {
+                    return fetchRandomTopic();
+                }
+
+                currentArticle.title = page.title;
+                currentArticle.url = `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title)}`;
+
+                processArticleText(page.title + ' ' + page.extract);
+
+                // If not enough sentences were found, try another page
+                if (currentArticle.allSentences.length < 10) {
+                    return fetchRandomTopic();
+                }
+
+                renderTopicSection();
+                render20Words();
+                render10Sentences();
+
+                loadingState.classList.add('hidden');
+                resultsState.classList.remove('hidden');
+
+            } catch (error) {
+                console.error(error);
+                loadingState.classList.add('hidden');
+                welcomeState.classList.remove('hidden');
+                showToast('Failed to fetch topic. Retrying...');
+            }
+        }
+
+        // Tokenize words and split sentences cleanly
+        function processArticleText(fullText) {
+            // Clean section headings like "== References =="
+            const cleanedText = fullText.replace(/==+[^=]+==+/g, '').replace(/\[\d+\]/g, '');
+
+            // Sentences extraction
+            const sentences = cleanedText
+                .split(/(?<=[.!?])\s+/)
+                .map(s => s.trim())
+                .filter(s => {
+                    // Filter out short fragments or menu lines
+                    return s.length >= 25 && s.length <= 300 && !s.includes('==');
+                });
+
+            currentArticle.allSentences = sentences;
+
+            // Words extraction
+            const rawWords = cleanedText
+                .toLowerCase()
+                .replace(/[^a-z0-9\s]/g, '')
+                .split(/\s+/);
+
+            const cleanWords = Array.from(new Set(
+                rawWords.filter(w => w.length >= 3 && !STOP_WORDS.has(w) && isNaN(w))
+            ));
+
+            currentArticle.allWords = cleanWords;
+        }
+
+        // Render Topic Section
+        function renderTopicSection() {
+            topicTitle.innerText = currentArticle.title;
+            wikiLink.href = currentArticle.url;
+
+            topicTitleCard.onclick = () => {
+                copyToClipboard(currentArticle.title, 'Topic');
+            };
+        }
+
+        // Render 20 Random Words
+        function render20Words() {
+            wordsChipsContainer.innerHTML = '';
+            
+            const shuffled = [...currentArticle.allWords].sort(() => 0.5 - Math.random());
+            currentArticle.displayedWords = shuffled.slice(0, 20);
+
+            currentArticle.displayedWords.forEach(word => {
+                appendWordChip(word);
+            });
+        }
+
+        function appendWordChip(word, isNew = false) {
+            const chip = document.createElement('button');
+            chip.className = `group px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-700/60 hover:bg-blue-600 hover:text-white text-slate-200 border border-slate-600/50 hover:border-blue-400 transition-all transform active:scale-95 flex items-center gap-1.5 shadow-sm ${isNew ? 'animate-pulse' : ''}`;
+            chip.innerHTML = `<span>${word}</span> <i class="fa-regular fa-copy text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"></i>`;
+            
+            chip.onclick = () => {
+                copyToClipboard(word, 'Word');
+            };
+
+            wordsChipsContainer.appendChild(chip);
+        }
+
+        // Add 1 extra random word handler
+        btnAnotherWord.onclick = () => {
+            if (!currentArticle.allWords.length) return;
+
+            const unused = currentArticle.allWords.filter(w => !currentArticle.displayedWords.includes(w));
+            const selectedWord = unused.length > 0 
+                ? unused[Math.floor(Math.random() * unused.length)]
+                : currentArticle.allWords[Math.floor(Math.random() * currentArticle.allWords.length)];
+
+            currentArticle.displayedWords.push(selectedWord);
+            appendWordChip(selectedWord, true);
+            showToast(`Added word: "${selectedWord}"`);
+        };
+
+        // Render 10 Random Sentences
+        function render10Sentences() {
+            sentencesContainer.innerHTML = '';
+
+            const shuffled = [...currentArticle.allSentences].sort(() => 0.5 - Math.random());
+            currentArticle.displayedSentences = shuffled.slice(0, 10);
+
+            currentArticle.displayedSentences.forEach((sentence, idx) => {
+                const card = document.createElement('div');
+                card.className = 'group p-3.5 rounded-xl bg-slate-900/40 hover:bg-slate-700/40 border border-slate-700/40 hover:border-indigo-500/50 cursor-pointer transition flex items-start gap-3 relative';
+                
+                card.innerHTML = `
+                    <span class="text-xs font-bold text-indigo-400 bg-indigo-500/10 h-6 w-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                        ${idx + 1}
+                    </span>
+                    <p class="text-xs text-slate-200 group-hover:text-white leading-relaxed flex-grow">
+                        ${sentence}
+                    </p>
+                    <span class="text-[11px] text-slate-500 group-hover:text-indigo-300 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shrink-0 pt-0.5">
+                        <i class="fa-regular fa-copy"></i> Copy
+                    </span>
+                `;
+
+                card.onclick = () => {
+                    card.classList.add('ring-2', 'ring-indigo-400/80');
+                    setTimeout(() => card.classList.remove('ring-2', 'ring-indigo-400/80'), 300);
+                    copyToClipboard(sentence, 'Sentence');
+                };
+
+                sentencesContainer.appendChild(card);
+            });
+        }
+
+        // Give another 10 sentences handler
+        btnAnotherLines.onclick = () => {
+            render10Sentences();
+            showToast('Loaded 10 new random sentences!');
+        };
+
+        // Trigger button
+        btnGiveRandom.onclick = fetchRandomTopic;
+
+    </script>
+</body>
+</html>
